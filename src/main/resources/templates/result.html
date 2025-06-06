@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Comparison Result</title>
+</head>
+<body>
+<h1>Comparison Result</h1>
+
+<div th:if="${error}">
+    <p style="color: red;" th:text="${error}"></p>
+</div>
+
+<div th:unless="${#lists.isEmpty(missingSongs)}">
+    <h2>
+        Found <span th:text="${#lists.size(missingSongs)}"></span> missing song(s)
+    </h2>
+    <ul>
+        <li th:each="song : ${missingSongs}" th:text="${song.title + ' - ' + song.artist}"></li>
+    </ul>
+    <button onclick="downloadMissingSongs()">Download Missing Songs</button>
+</div>
+
+<div th:if="${#lists.isEmpty(missingSongs) and not error}">
+    <p>No missing songs found!</p>
+</div>
+
+<div th:if="${scannedSongs}">
+    <h2>Scanned Local Songs:</h2>
+    <ul>
+        <li th:each="song : ${scannedSongs}" th:text="${song.title}"></li>
+    </ul>
+</div>
+
+<script th:inline="javascript">
+    function downloadMissingSongs() {
+        var missingSongs = /*[[${missingSongs}]]*/ [];
+        var csvContent = "Title,Artist\n";
+        missingSongs.forEach(function(song){
+            csvContent += song.title + "," + song.artist + "\n";
+        });
+
+        var encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "missing_songs.csv");
+        document.body.appendChild(link); // Required for Firefox
+
+        link.click();
+    }
+</script>
+</body>
+</html>

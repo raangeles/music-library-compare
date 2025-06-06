@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Music Library Compare</title>
+</head>
+<body>
+<h1>Compare Spotify vs. Local Music Library</h1>
+<form method="post" enctype="multipart/form-data" th:action="@{/compare}">
+    <label>Select Spotify Export (CSV or XML):</label><br>
+    <input type="file" name="spotifyFile" required><br><br>
+
+    <label>Select Local Library (CSV or XML):</label><br>
+    <input type="file" name="localFile" required><br><br>
+
+    <button type="submit">Compare</button>
+</form>
+
+<hr>
+<h2>Or Scan Local Music Folder</h2>
+<form method="post" th:action="@{/scan}">
+    <label>Enter Folder Path:</label><br>
+    <input type="text" name="folderPath" required><br><br>
+    <button type="submit">Scan Folder</button>
+</form>
+</body>
+</html>
