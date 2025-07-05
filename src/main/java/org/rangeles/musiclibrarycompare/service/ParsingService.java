@@ -1,6 +1,5 @@
 package org.rangeles.musiclibrarycompare.service;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.rangeles.musiclibrarycompare.model.SongEntry;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 
 @Service
@@ -31,7 +31,7 @@ public class ParsingService {
             byte[] bytes = buffer.toByteArray();
             ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
             String xmlContent = new String(bytes, StandardCharsets.UTF_8);
-            logger.debug("XML Content:\n{}", xmlContent);
+            logger.debug("XML Content from {}:\n{}", filename, xmlContent);
 
             XMLInputFactory factory = XMLInputFactory.newFactory();
             XMLStreamReader reader = factory.createXMLStreamReader(inputStream);
@@ -39,12 +39,12 @@ public class ParsingService {
             while (reader.hasNext()) {
                 int event = reader.next();
                 switch (event) {
-                    case XMLStreamReader.START_ELEMENT:
+                    case XMLStreamConstants.START_ELEMENT:
                         String localName = reader.getLocalName();
                         if ("name".equals(localName) || "title".equals(localName)) {
                             try {
                                 reader.next();
-                                if (reader.getEventType() == XMLStreamReader.CHARACTERS) {
+                                if (reader.getEventType() == XMLStreamConstants.CHARACTERS) {
                                     title = reader.getText();
                                 } else {
                                     throw new XMLStreamException("Expected text for " + localName + " tag, but got: " + reader.getEventType());
@@ -57,7 +57,7 @@ public class ParsingService {
                         } else if ("artist".equals(localName)) {
                             try {
                                 reader.next();
-                                if (reader.getEventType() == XMLStreamReader.CHARACTERS) {
+                                if (reader.getEventType() == XMLStreamConstants.CHARACTERS) {
                                     artist = reader.getText();
                                 } else {
                                     throw new XMLStreamException("Expected text for artist tag, but got: " + reader.getEventType());
@@ -68,40 +68,41 @@ public class ParsingService {
                             }
                         }
                         break;
-                    case XMLStreamReader.END_ELEMENT:
+                    case XMLStreamConstants.END_ELEMENT:
                         if ("track".equals(reader.getLocalName())) {
                             if (title != null && artist != null) {
                                 songs.add(new SongEntry(title, artist));
                                 logger.debug("Parsed track - Title: {}, Artist: {}", title, artist);
                             } else {
-                                logger.warn("Skipping track due to missing title or artist");
+                                logger.warn("Skipping track due to missing title or artist in file: {}", filename); // Added filename to log
                             }
                             title = null;
                             artist = null;
                         }
                         break;
-                    case XMLStreamReader.CHARACTERS:
+                    case XMLStreamConstants.CHARACTERS:
                         break;
                 }
-                if (event == XMLStreamReader.END_ELEMENT || event == XMLStreamReader.START_ELEMENT) {
+                if (event == XMLStreamConstants.END_ELEMENT || event == XMLStreamConstants.START_ELEMENT) {
                     lineNumber = xmlContent.substring(0, (int) reader.getLocation().getCharacterOffset()).split("\n").length;
                 }
             }
             reader.close();
+            logger.info("Successfully parsed {} songs from XML file: {}", songs.size(), filename);
 
         } catch (XMLStreamException e) {
             String errorMessage = String.format("Error parsing XML file '%s' at line %d: %s. This is caused by certain " +
                     "characters in the file. Try wrapping the offending content in the tag with <![CDATA[]]>." +
                     "For example for the album title Formula of Love: O+T=<3 <![CDATA[Formula of Love: O+T=<3]]>", filename, lineNumber, e.getMessage());
             logger.error(errorMessage);
-            throw new IOException(errorMessage, e); // Wrap and re-throw as IOException
+            throw new IOException(errorMessage, e);
         }
         return songs;
     }
 
 
     public List<SongEntry> parseCsv(InputStream inputStream) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         return reader.lines()
                 .skip(1) // skip header
                 .map(line -> line.split(","))

@@ -38,8 +38,8 @@ public class ParsingServiceTest {
                 "    </track>\n" +
                 "</tracks>";
         InputStream inputStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8));
-
-        List<SongEntry> songs = parsingService.parseXml(inputStream);
+        String fileName = "musicfile.xml";
+        List<SongEntry> songs = parsingService.parseXml(inputStream, fileName);
 
         assertEquals(2, songs.size());
         assertEquals("Song 1", songs.get(0).getTitle());
@@ -62,8 +62,9 @@ public class ParsingServiceTest {
                 "    </track>\n" +
                 "</tracks>";
         InputStream inputStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8));
+        String fileName = "musicfile.xml";
 
-        List<SongEntry> songs = parsingService.parseXml(inputStream);
+        List<SongEntry> songs = parsingService.parseXml(inputStream, fileName);
 
         assertEquals(2, songs.size());
         assertEquals("Song A", songs.get(0).getTitle());
@@ -82,8 +83,9 @@ public class ParsingServiceTest {
                 "    </item>\n" +
                 "</invalid>";
         InputStream inputStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8));
+        String fileName = "musicfile.xml";
 
-        assertThrows(IOException.class, () -> parsingService.parseXml(inputStream));
+        assertThrows(IOException.class, () -> parsingService.parseXml(inputStream, fileName));
     }
 
     @Test

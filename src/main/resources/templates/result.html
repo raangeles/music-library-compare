@@ -2,51 +2,367 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Comparison Result</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1DB954; /* Spotify green */
+            --secondary-color: #191414; /* Dark background */
+            --text-color: #333;
+            --light-bg: #f9f9f9;
+            --border-color: #e0e0e0;
+            --button-hover-color: #17a74a;
+            --section-bg: #fcfcfc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 35px 45px;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            max-width: 900px; /* Wider container for results page */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: var(--secondary-color);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+
+        h2 {
+            color: var(--text-color);
+            margin-top: 30px;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            padding-bottom: 0;
+        }
+
+        .section-container { /* New class to contain each comparison section */
+            margin-bottom: 25px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--section-bg);
+            overflow: hidden; /* For border-radius with collapsible content */
+        }
+
+        .section-buttons { /* New class for the button container */
+            padding: 15px 25px; /* Padding for the button area */
+            background-color: var(--section-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex; /* Use flexbox for horizontal alignment */
+            gap: 10px; /* Space between buttons */
+            flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+        }
+
+        .section-description { /* New class for the always-visible description */
+            padding: 15px 25px; /* Match collapsible content padding */
+            font-size: 0.95em;
+            margin-top: 0;
+            margin-bottom: 0; /* Remove default paragraph margins */
+            background-color: var(--section-bg);
+            border-top: 1px solid var(--border-color); /* Separator from header */
+        }
+
+
+        ul {
+            list-style-type: disc;
+            margin-left: 20px;
+            padding-bottom: 10px;
+        }
+
+        li {
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+
+        /* General Buttons - apply to all buttons except specific collapsible headers */
+        button {
+            padding: 12px 25px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+            white-space: nowrap; /* Prevent button text from wrapping */
+        }
+        button:hover {
+            background-color: var(--button-hover-color);
+        }
+
+        .error {
+            color: #d9534f; /* Red */
+            font-weight: 600;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+        }
+        .success {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+        }
+
+        /* Styles for Collapsible Sections - Refined */
+        .collapsible-header {
+            background-color: var(--primary-color); /* Use primary color for header */
+            color: white; /* White text for header */
+            cursor: pointer;
+            padding: 18px 25px; /* More horizontal padding */
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 1.1em; /* Slightly larger font */
+            transition: 0.4s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px 8px 0 0; /* Rounded top corners, sharp bottom */
+        }
+        .collapsible-header:hover {
+            background-color: var(--button-hover-color);
+        }
+        .collapsible-header h2 { /* Style h2 inside button */
+            margin: 0; /* Remove default margin */
+            font-size: 1.2em; /* Ensure it's legible */
+            color: white; /* Make sure it stays white */
+        }
+        .collapsible-header:after {
+            content: '\02795'; /* Plus sign icon */
+            font-size: 13px;
+            color: white; /* Icon color */
+            float: right;
+            margin-left: 10px;
+            transition: transform 0.3s ease;
+        }
+        .collapsible-header.active:after {
+            content: '\2796'; /* Minus sign icon */
+            transform: rotate(0deg);
+        }
+
+        .collapsible-content {
+            padding: 5px 25px; /* Adjusted padding */
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out; /* Slightly slower transition */
+            background-color: var(--section-bg);
+            /* Removed border-top here, as section-description now has it */
+        }
+
+        .collapsible-content p { /* This rule is now effectively unused for descriptions */
+            margin-top: 0;
+            margin-bottom: 7x;
+            font-size: 0.9em;
+        }
+
+        .collapsible-content ul {
+            margin-top: 0;
+            margin-bottom: 10px;
+            padding-left: 25px; /* Indent list items */
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 40px 0;
+        }
+
+        .bottom-buttons {
+            text-align: center;
+            padding-top: 20px;
+            display: flex; /* Use flex for bottom buttons as well */
+            justify-content: center;
+            gap: 15px; /* Space between bottom buttons */
+            flex-wrap: wrap;
+        }
+        /* No margin-right on individual buttons within .bottom-buttons or .section-buttons */
+        .section-buttons button, .bottom-buttons button {
+            margin-right: 0;
+        }
+
+    </style>
 </head>
 <body>
-<h1>Comparison Result</h1>
+<div class="container">
+    <h1>Comparison Results</h1>
 
-<div th:if="${error}">
-    <p style="color: red;" th:text="${error}"></p>
-</div>
+    <div th:if="${error}">
+        <p class="error" th:text="${error}"></p>
+    </div>
 
-<div th:unless="${#lists.isEmpty(missingSongs)}">
-    <h2>
-        Found <span th:text="${#lists.size(missingSongs)}"></span> missing song(s)
-    </h2>
-    <ul>
-        <li th:each="song : ${missingSongs}" th:text="${song.title + ' - ' + song.artist}"></li>
-    </ul>
-    <button onclick="downloadMissingSongs()">Download Missing Songs</button>
-</div>
+    <div th:unless="${#lists.isEmpty(commonSongs)}" class="section-container">
+        <button class="collapsible-header">
+            <h2>Found <span th:text="${#lists.size(commonSongs)}"></span> common song(s)</h2>
+        </button>
+        <p class="section-description">These songs are present in both libraries.</p>
+        <div class="collapsible-content">
+            <ul>
+                <li th:each="song : ${commonSongs}" th:text="${song.title + ' - ' + song.artist}"></li>
+            </ul>
+        </div>
+        <div class="section-buttons">
+            <button onclick="window.location.href='/download/comparison/csv'">Download Common Songs (CSV)</button>
+            <button onclick="window.location.href='/download/comparison/xml'">Download Common Songs (XML)</button>
+        </div>
+    </div>
 
-<div th:if="${#lists.isEmpty(missingSongs) and not error}">
-    <p>No missing songs found!</p>
-</div>
+    <div th:unless="${#lists.isEmpty(localOnlySongs)}" class="section-container">
+        <button class="collapsible-header">
+            <h2>Found <span th:text="${#lists.size(localOnlySongs)}"></span> local-only song(s)</h2>
+        </button>
+        <p class="section-description">These songs are present in your local library but not in Spotify.</p>
+        <div class="collapsible-content">
+            <ul>
+                <li th:each="song : ${localOnlySongs}" th:text="${song.title + ' - ' + song.artist}"></li>
+            </ul>
+        </div>
+        <div class="section-buttons">
+            <button onclick="downloadLocalOnlySongsCsv()">Download Local Only Songs (CSV)</button>
+            <button onclick="downloadLocalOnlySongsXml()">Download Local Only Songs (XML)</button>
+        </div>
+    </div>
 
-<div th:if="${scannedSongs}">
-    <h2>Scanned Local Songs:</h2>
-    <ul>
-        <li th:each="song : ${scannedSongs}" th:text="${song.title}"></li>
-    </ul>
+    <div th:unless="${#lists.isEmpty(spotifyOnlySongs)}" class="section-container">
+        <button class="collapsible-header">
+            <h2>Found <span th:text="${#lists.size(spotifyOnlySongs)}"></span> Spotify-only song(s)</h2>
+        </button>
+        <p class="section-description">These are songs in Spotify that are not present in your local library.</p>
+        <div class="collapsible-content">
+            <ul>
+                <li th:each="song : ${spotifyOnlySongs}" th:text="${song.title + ' - ' + song.artist}"></li>
+            </ul>
+        </div>
+        <div class="section-buttons">
+            <button onclick="downloadSpotifyOnlySongsCsv()">Download Spotify Only Songs (CSV)</button>
+            <button onclick="downloadSpotifyOnlySongsXml()">Download Spotify Only Songs (XML)</button>
+        </div>
+    </div>
+
+
+    <div th:if="${scannedSongs}" class="section-container">
+        <button class="collapsible-header">
+            <h2>Scanned Local Songs: <span th:text="${#lists.size(scannedSongs)}"></span></h2>
+        </button>
+        <p th:if="${#lists.isEmpty(scannedSongs)}" class="section-description">No songs found in the scanned folder.</p>
+        <div th:unless="${#lists.isEmpty(scannedSongs)}" class="collapsible-content">
+            <ul>
+                <li th:each="song : ${scannedSongs}" th:text="${song.title}"></li>
+            </ul>
+        </div>
+    </div>
+
+    <div th:if="${#lists.isEmpty(commonSongs) and #lists.isEmpty(localOnlySongs) and #lists.isEmpty(spotifyOnlySongs) and not error}" class="section-container">
+        <p class="success">No differences found between the libraries or no songs were processed.</p>
+    </div>
+
+    <hr/>
+    <div class="bottom-buttons">
+        <button onclick="window.location.href='/'">Go Back Home</button>
+    </div>
 </div>
 
 <script th:inline="javascript">
-    function downloadMissingSongs() {
-        var missingSongs = /*[[${missingSongs}]]*/ [];
+    // New JavaScript functions for Spotify Only Songs (formerly missingSongs)
+    function downloadSpotifyOnlySongsCsv() {
+        var spotifyOnlySongs = /*[[${spotifyOnlySongs}]]*/ [];
         var csvContent = "Title,Artist\n";
-        missingSongs.forEach(function(song){
-            csvContent += song.title + "," + song.artist + "\n";
+        spotifyOnlySongs.forEach(function(song){
+            csvContent += `"${song.title.replace(/"/g, '""')}","${song.artist.replace(/"/g, '""')}"\n`;
         });
 
         var encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
         var link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "missing_songs.csv");
-        document.body.appendChild(link); // Required for Firefox
-
+        link.setAttribute("download", "spotify_only_songs.csv"); // Filename changed
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
     }
+
+    function downloadSpotifyOnlySongsXml() {
+        window.location.href = "/download/spotifyonly/xml"; // Endpoint changed
+    }
+
+    // JavaScript functions for Local Only Songs (formerly uniqueSongs)
+    function downloadLocalOnlySongsCsv() {
+        var localOnlySongs = /*[[${localOnlySongs}]]*/ []; // Variable name changed
+        var csvContent = "Title,Artist\n";
+        localOnlySongs.forEach(function(song){
+            csvContent += `"${song.title.replace(/"/g, '""')}","${song.artist.replace(/"/g, '""')}"\n`;
+        });
+
+        var encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+        var link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "local_only_songs.csv"); // Filename changed
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function downloadLocalOnlySongsXml() {
+        window.location.href = "/download/localonly/xml"; // Endpoint changed
+    }
+
+    // JavaScript for Collapsible Sections
+    var coll = document.getElementsByClassName("collapsible-header");
+    var i;
+
+    for (i = 0; i < coll.length; i++) {
+        coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            // The description paragraph is now outside the collapsible-content,
+            // so we target the actual collapsible content div (which is now the 2nd sibling)
+            var content = this.nextElementSibling.nextElementSibling; // Skip the p.section-description
+            if (content && content.classList.contains('collapsible-content')) { // Ensure it's the correct div
+                 if (content.style.maxHeight){
+                    content.style.maxHeight = null;
+                } else {
+                    content.style.maxHeight = (content.scrollHeight + 50) + "px";
+                }
+            }
+        });
+    }
+
+    // Adjust scroll height of collapsible content after images/dynamic content load
+    window.addEventListener('load', function() {
+        var coll = document.getElementsByClassName("collapsible-header");
+        for (i = 0; i < coll.length; i++) {
+            // Similarly, target the correct sibling for recalculation
+            var content = coll[i].nextElementSibling.nextElementSibling;
+            if (content && content.classList.contains('collapsible-content')) {
+                if (coll[i].classList.contains('active')) {
+                    content.style.maxHeight = (content.scrollHeight + 50) + "px";
+                }
+            }
+        }
+    });
+
 </script>
+
 </body>
 </html>
