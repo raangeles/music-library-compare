@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 
 import java.util.*;
+import java.util.regex.Matcher; // Import Matcher
+import java.util.regex.Pattern; // Import Pattern
 
 @Service
 public class CompareService {
@@ -28,6 +30,12 @@ public class CompareService {
     private static final double SIMILARITY_THRESHOLD = 0.90;
     private static final JaroWinklerSimilarity similarity = new JaroWinklerSimilarity();
 
+    // Regex for matching common "feat" patterns: (feat. Artist), [feat. Artist], - feat. Artist, feat. Artist
+    // It captures variations like "feat", "ft", "featuring", "f." and content within parentheses/brackets or after a dash.
+    private static final Pattern FEAT_PATTERN = Pattern.compile(
+            "\\b(feat|ft|featuring|f\\.)(\\s*\\.)?\\s*[^\\)]*?\\)|\\s*\\[(feat|ft|featuring|f\\.)[^\\)]*?\\]|\\s*-\\s*(feat|ft|featuring|f\\.)[^\\)]*?$|\\s*(feat|ft|featuring|f\\.)\\s+[\\w\\s.,&]+"
+    );
+
     public CompareService(ParsingService parsingService) {
         this.parsingService = parsingService;
         this.xmlMapper = new XmlMapper();
@@ -36,20 +44,14 @@ public class CompareService {
         this.xmlMapper.enable(SerializationFeature.INDENT_OUTPUT); //pretty print
     }
 
-    // This method needs to be checked against the existing ComparisonResultBundle constructor
-    // For now, let's focus on the individual find methods and export methods.
     public ComparisonResultBundle performComparison(List<SongEntry> spotifyList, List<SongEntry> localList) {
         List<SongEntry> commonSongs = findCommonSongs(spotifyList, localList);
         List<SongEntry> spotifyOnlySongs = findSpotifyOnlySongs(spotifyList, localList); // Renamed
         List<SongEntry> localOnlySongs = findLocalOnlySongs(spotifyList, localList);     // Renamed
 
-        // Ensure the ComparisonResultBundle constructor takes these in the correct order
-        // Based on its usage in CompareController, it's: commonSongs, uniqueLocalSongs (now localOnlySongs), missingSongs (now spotifyOnlySongs)
         return new ComparisonResultBundle(commonSongs, localOnlySongs, spotifyOnlySongs);
     }
 
-
-    // Renamed from findMissingSongs
     public List<SongEntry> findSpotifyOnlySongs(List<SongEntry> spotifyList, List<SongEntry> localList) {
         List<SongEntry> spotifyOnly = new ArrayList<>();
 
@@ -70,7 +72,7 @@ public class CompareService {
 
     public List<SongEntry> findCommonSongs(List<SongEntry> spotifyList, List<SongEntry> localList) {
         List<SongEntry> common = new ArrayList<>();
-        Set<String> matchedLocalSongs = new HashSet<>(); // To avoid double counting local songs
+        Set<String> matchedLocalSongs = new HashSet<>();
 
         for (SongEntry spotifySong : spotifyList) {
             for (SongEntry localSong : localList) {
@@ -85,7 +87,6 @@ public class CompareService {
         return common;
     }
 
-    // Renamed from findUniqueSongs
     public List<SongEntry> findLocalOnlySongs(List<SongEntry> spotifyList, List<SongEntry> localList) {
         List<SongEntry> localOnly = new ArrayList<>();
 
@@ -105,23 +106,61 @@ public class CompareService {
     }
 
     private boolean isSimilar(SongEntry song1, SongEntry song2) {
-        String title1 = song1.getTitle() != null ? song1.getTitle().toLowerCase() : "";
-        String artist1 = song1.getArtist() != null ? song1.getArtist().toLowerCase() : "";
-        String title2 = song2.getTitle() != null ? song2.getTitle().toLowerCase() : "";
-        String artist2 = song2.getArtist() != null ? song2.getArtist().toLowerCase() : "";
+        // Normalize titles and artists before comparison
+        String normalizedTitle1 = normalizeTitle(song1.getTitle());
+        String normalizedArtist1 = normalizeArtistName(song1.getArtist());
+        String normalizedTitle2 = normalizeTitle(song2.getTitle());
+        String normalizedArtist2 = normalizeArtistName(song2.getArtist());
 
-        double scoreTitle = similarity.apply(title1, title2);
-        double scoreArtist = similarity.apply(artist1, artist2);
+        double scoreTitle = similarity.apply(normalizedTitle1, normalizedTitle2);
+        double scoreArtist = similarity.apply(normalizedArtist1, normalizedArtist2);
 
         return scoreTitle >= SIMILARITY_THRESHOLD && scoreArtist >= SIMILARITY_THRESHOLD;
     }
 
+    // Added helper method for artist name normalisation
+    // 1. Remove leading "the"
+    // 2. Remove common punctuations and extra spaces
+    private String normalizeArtistName(String artist) {
+        if (artist == null) {
+            return "";
+        }
+        String normalized = artist.toLowerCase();
+
+        if (normalized.startsWith("the ")) {
+            normalized = normalized.substring(4);
+        }
+
+        normalized = normalized.replaceAll("[.'()]", "").trim();
+        normalized = normalized.replaceAll("\\s+", " "); // Replace multiple spaces with single space
+
+        return normalized.trim(); // Final trim
+    }
+
+    // Added helper method for song title normalisation
+    // 1. Expand ampersand (&) to "and"
+    // 2. Removal of patterns like (feat Artist)
+    private String normalizeTitle(String title) {
+        if (title == null) {
+            return "";
+        }
+        String normalized = title.toLowerCase();
+
+        normalized = normalized.replace("&", "and");
+
+        Matcher matcher = FEAT_PATTERN.matcher(normalized);
+        normalized = matcher.replaceAll(" ").trim(); // Replace matched patterns with a space, then trim
+        normalized = normalized.replaceAll("\\s+", " ").trim();
+
+        return normalized;
+    }
+
+    // Remove alphaneumeric characters
     private String normalize(String input) {
         return input == null ? "" : input.toLowerCase().replaceAll("[^a-z0-9]", "").trim();
     }
 
-    // Parameter uniqueSongs changed to localOnlySongs for clarity in comparison export
-    public byte[] exportComparisonToCsv(List<SongEntry> commonSongs, List<SongEntry> localOnlySongs) { // Parameter changed
+    public byte[] exportComparisonToCsv(List<SongEntry> commonSongs, List<SongEntry> localOnlySongs) {
         StringBuilder csvContent = new StringBuilder();
 
         //BOM Utf-8 compatibility for Excel
@@ -161,12 +200,10 @@ public class CompareService {
         return field.replace("\"", "\"\"");
     }
 
-    // Parameter uniqueSongs changed to localOnlySongs for clarity in comparison export
-    public byte[] exportComparisonToXml(List<SongEntry> commonSongs, List<SongEntry> localOnlySongs) throws IOException { // Parameter changed
+    public byte[] exportComparisonToXml(List<SongEntry> commonSongs, List<SongEntry> localOnlySongs) throws IOException {
         logger.info("Exporting comparison results to XML using JacksonXmlMapper");
 
-        // Assuming ComparisonResult constructor takes (common, unique/localOnly)
-        ComparisonResult comparisonResult = new ComparisonResult(commonSongs, localOnlySongs); // Parameter changed
+        ComparisonResult comparisonResult = new ComparisonResult(commonSongs, localOnlySongs);
 
         try {
             return xmlMapper.writeValueAsBytes(comparisonResult);
@@ -177,19 +214,19 @@ public class CompareService {
     }
 
     // Renamed from exportMissingSongsToXml
-    public byte[] exportSpotifyOnlySongsToXml(List<SongEntry> spotifyOnlySongs) throws IOException { // Parameter changed
-        logger.info("Exporting {} Spotify-only songs to XML using JacksonXmlMapper", spotifyOnlySongs.size()); // Log message changed
-        SongEntryList songEntryList = new SongEntryList(spotifyOnlySongs); // Parameter changed
+    public byte[] exportSpotifyOnlySongsToXml(List<SongEntry> spotifyOnlySongs) throws IOException {
+        logger.info("Exporting {} Spotify-only songs to XML using JacksonXmlMapper", spotifyOnlySongs.size());
+        SongEntryList songEntryList = new SongEntryList(spotifyOnlySongs);
         try {
             return xmlMapper.writeValueAsBytes(songEntryList);
         } catch (Exception e) {
-            logger.error("Error converting Spotify-only songs to XML using JacksonXmlMapper", e); // Log message changed
-            throw new IOException("Error converting Spotify-only songs to XML using JacksonXmlMapper", e); // Error message changed
+            logger.error("Error converting Spotify-only songs to XML using JacksonXmlMapper", e);
+            throw new IOException("Error converting Spotify-only songs to XML using JacksonXmlMapper", e);
         }
     }
 
     // Renamed from exportUniqueSongsToCsv
-    public byte[] exportLocalOnlySongsToCsv(List<SongEntry> localOnlySongs) { // Parameter changed
+    public byte[] exportLocalOnlySongsToCsv(List<SongEntry> localOnlySongs) {
         StringBuilder csvContent = new StringBuilder();
         csvContent.append('\ufeff'); // BOM Utf-8 compatibility for Excel
         csvContent.append("Title,Artist,Album\n");
@@ -202,14 +239,14 @@ public class CompareService {
     }
 
     // Renamed from exportUniqueSongsToXml
-    public byte[] exportLocalOnlySongsToXml(List<SongEntry> localOnlySongs) throws IOException { // Parameter changed
-        logger.info("Exporting {} local-only songs to XML using JacksonXmlMapper", localOnlySongs.size()); // Log message changed
-        SongEntryList songEntryList = new SongEntryList(localOnlySongs); // Parameter changed
+    public byte[] exportLocalOnlySongsToXml(List<SongEntry> localOnlySongs) throws IOException {
+        logger.info("Exporting {} local-only songs to XML using JacksonXmlMapper", localOnlySongs.size());
+        SongEntryList songEntryList = new SongEntryList(localOnlySongs);
         try {
             return xmlMapper.writeValueAsBytes(songEntryList);
         } catch (Exception e) {
-            logger.error("Error converting local-only songs to XML using JacksonXmlMapper", e); // Log message changed
-            throw new IOException("Error converting local-only songs to XML using JacksonXmlMapper", e); // Error message changed
+            logger.error("Error converting local-only songs to XML using JacksonXmlMapper", e);
+            throw new IOException("Error converting local-only songs to XML using JacksonXmlMapper", e);
         }
     }
 }

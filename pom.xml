@@ -12,7 +12,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
+        <spring-boot.version>3.5.3</spring-boot.version> </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -22,13 +22,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
-            <version>3.4.5</version>
-        </dependency>
+            <version>${spring-boot.version}</version> </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <version>3.4.5</version>
-        </dependency>
+            <version>${spring-boot.version}</version> </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -37,8 +35,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
-            <version>3.4.5</version>
-        </dependency>
+            <version>${spring-boot.version}</version> </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <version>${spring-boot.version}</version> </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
